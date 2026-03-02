@@ -1,12 +1,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local humRoot = char:WaitForChild("HumanoidRootPart")
-local torso = char:WaitForChild("Torso")
 
--- 1. FUNCIÓN PARA HABLAR EN EL CHAT GLOBAL (VISIBLE PARA TODOS)
+-- 1. FUNCIÓN DE CHAT REFORZADA
 local function hablarEnChat(texto)
     local chatEvent = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     if chatEvent then
@@ -14,101 +12,92 @@ local function hablarEnChat(texto)
     end
 end
 
--- 2. CREAR EL "FAKE CHARACTER" (VISIBLE PARA TODOS)
-local function crearFakeGabriel()
-    -- Ocultar tu personaje Bacon (Localmente para ti, pero el Fake será global)
-    for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") or part:IsA("Decal") then
-            part.Transparency = 1
-        end
-    end
-
-    -- Crear el modelo de Gabriel (Usando un R15 Dummy básico de Roblox para animar)
-    local fakeGabriel = game:GetObjects("rbxassetid://5161593575")[1] -- ID de un Dummy R15
-    fakeGabriel.Name = "Gabriel_Fake"
-    fakeGabriel.Parent = workspace
-    
-    local fakeHRP = fakeGabriel:WaitForChild("HumanoidRootPart")
-    local fakeHum = fakeGabriel:WaitForChild("Humanoid")
-
-    -- Pegar el Fake Gabriel a tu personaje
-    local weld = Instance.new("Weld")
-    weld.Part0 = humRoot
-    weld.Part1 = fakeHRP
-    weld.C0 = CFrame.new(0, 0, 0)
-    weld.Parent = fakeHRP
-
-    -- 3. CARGAR ANIMACIONES (Visibles para todos)
-    -- Usaremos IDs de animaciones públicas de Roblox que parezcan celestiales/de pose
-    local animFlyId = "rbxassetid://507767773" -- ID de animación de vuelo R15
-    local animPoseId = "rbxassetid://507776043" -- ID de animación de pose dramática
-
-    local animFly = Instance.new("Animation")
-    animFly.AnimationId = animFlyId
-    local trackFly = fakeHum:LoadAnimation(animFly)
-    trackFly.Looped = true
-    trackFly:Play()
-
-    local animPose = Instance.new("Animation")
-    animPose.AnimationId = animPoseId
-    local trackPose = fakeHum:LoadAnimation(animPose)
-    trackPose.Looped = true
-    trackPose:Play()
-
-    -- 4. EFECTOS VISUALES TOTALMENTE VISIBLES (Aura Dorada y Alas de Luz)
-    -- (Omitido por brevedad, pero usaríamos ParticleEmitters globales aquí)
-
-    return fakeGabriel, trackFly, trackPose
+-- 2. LIMPIAR GUIS ANTIGUAS (Evita que se duplique el cuadro)
+if player.PlayerGui:FindFirstChild("GabrielGui") then
+    player.PlayerGui.GabrielGui:Destroy()
 end
 
--- 5. INTERFAZ DORADA CINEMÁTICA (VISUAL SOLO PARA TI)
+-- 3. CREAR INTERFAZ DORADA
 local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.Name = "GabrielGui"
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0.5, 0, 0.15, 0)
 frame.Position = UDim2.new(0.25, 0, 0.75, 0)
 frame.BackgroundColor3 = Color3.new(0, 0, 0)
-frame.BackgroundTransparency = 0.6
+frame.BackgroundTransparency = 0.5
 
 local label = Instance.new("TextLabel", frame)
 label.Size = UDim2.new(1, 0, 1, 0)
 label.BackgroundTransparency = 1
-label.TextColor3 = Color3.fromRGB(255, 215, 0) -- DORADO CELESTIAL
+label.TextColor3 = Color3.fromRGB(255, 215, 0) -- DORADO
 label.TextScaled = true
-label.Font = Enum.Font.Arcade -- Estilo retro/boss
+label.Font = Enum.Font.Arcade
 label.Text = ""
 
--- 6. EJECUCIÓN CINEMÁTICA TOTALMENTE VISIBLE
-task.spawn(function()
-    hablarEnChat("BEHOLD! THE POWER OF AN ANGEL!") -- Lo ven todos
-    task.wait(1)
+-- 4. EFECTO DE LLEGADA Y AURA AMARILLA
+local function efectoEntrada()
+    local luz = Instance.new("PointLight", humRoot)
+    luz.Color = Color3.fromRGB(255, 215, 0)
+    luz.Range = 40
+    luz.Brightness = 10
     
-    local gabrielFake, flyTrack, poseTrack = crearFakeGabriel() -- Crea el personaje animado
-    
-    -- Levitación (Visible para todos)
     local bv = Instance.new("BodyVelocity", humRoot)
-    bv.Velocity = Vector3.new(0, 5, 0) -- Te eleva dramáticamente
+    bv.Velocity = Vector3.new(0, 4, 0) -- Levitación suave
     bv.MaxForce = Vector3.new(0, 4000, 0)
+    return bv, luz
+end
+
+-- 5. EL MOTOR DE VOCES (REPRODUCE EL AUDIO DE GABRIEL)
+local function reproducirVoz(idAudio, duracion)
+    local sonido = Instance.new("Sound", humRoot)
+    sonido.SoundId = "rbxassetid://" .. idAudio
+    sonido.Volume = 5 -- Volumen muy alto para que sea imponente
+    sonido.MaxDistance = 150 -- Distancia a la que los demás pueden escucharlo
+    sonido.EmitterSize = 30
+    sonido:Play()
     
-    -- DISCURSO (Visible para todos en el chat)
-    local frases = {
-        "Machine...",
-        "I will cut you down...",
-        "Break you apart...",
-        "Splay the gore of your profane form across the STARS!"
+    -- Borra el sonido al terminar para evitar lag en tu móvil de 8GB
+    task.delay(duracion, function()
+        if sonido then sonido:Destroy() end
+    end)
+end
+
+-- 6. LA SECUENCIA ÉPICA (SINCRONIZADA CON VOZ)
+task.spawn(function()
+    local levitar, brillo = efectoEntrada()
+    
+    -- Aquí están las frases, los IDs de audio y el tiempo que dura cada frase
+    -- (Nota: Usamos IDs genéricos épicos públicos de Roblox para evitar la censura de audios)
+    local secuencias = {
+        {texto = "Machine...", audioId = "9073335503", tiempo = 2},
+        {texto = "I will cut you down...", audioId = "9073336444", tiempo = 2},
+        {texto = "Break you apart...", audioId = "9073337351", tiempo = 2},
+        {texto = "Splay the gore of your profane form across the STARS!", audioId = "9073338520", tiempo = 4}
     }
 
-    for _, frase in pairs(frases) do
-        hablarEnChat(frase) -- ESTO LO VEN TODOS
-        -- Efecto máquina de escribir para ti
-        for i = 1, #frase do
-            label.Text = string.sub(frase, 1, i)
-            task.wait(0.04)
+    for _, linea in ipairs(secuencias) do
+        -- 1. Iniciar la voz
+        reproducirVoz(linea.audioId, linea.tiempo)
+        
+        -- 2. Enviar mensaje al chat global
+        hablarEnChat(linea.texto)
+        
+        -- 3. Efecto máquina de escribir (sincronizado con la duración del audio)
+        for i = 1, #linea.texto do
+            label.Text = string.sub(linea.texto, 1, i)
+            task.wait((linea.tiempo - 0.2) / #linea.texto)
         end
-        task.wait(1.5)
+        task.wait(0.5) -- Pausa dramática entre oraciones
     end
 
-    -- Limpieza
-    bv:Destroy()
-    gabrielFake:Destroy()
+    -- Grito Final
+    reproducirVoz("131063630", 4) -- Sonido de impacto divino / explosión final
+    label.Text = "BEHOLD! THE POWER OF AN ANGEL!"
+    hablarEnChat("BEHOLD! THE POWER OF AN ANGEL!")
+    task.wait(3)
+    
+    -- Limpiar los efectos cuando termine el discurso
+    levitar:Destroy()
+    brillo:Destroy()
     gui:Destroy()
 end)
