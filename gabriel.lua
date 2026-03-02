@@ -1,83 +1,119 @@
+--[[ 
+    GABRIEL: THE ABSOLUTE DIVINE FRAMEWORK
+    VERSION: ULTIMATE EXTREME
+]]
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
 local humRoot = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
 
--- --- CONFIGURACIÓN DE CHAT ---
-local function hablarEnChat(texto)
-    local chatEvent = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-    if chatEvent then
-        chatEvent.SayMessageRequest:FireServer(texto, "All")
+-- --- CONFIGURACIÓN DE AMBIENTE EXTREMO ---
+local function configurarMundo()
+    local colorCorrection = Instance.new("ColorCorrectionEffect", Lighting)
+    colorCorrection.TintColor = Color3.fromRGB(255, 255, 200)
+    colorCorrection.Saturation = 0.5
+    colorCorrection.Brightness = 0.2
+    
+    local bloom = Instance.new("BloomEffect", Lighting)
+    bloom.Intensity = 2
+    bloom.Threshold = 0.5
+    
+    return colorCorrection, bloom
+end
+
+-- --- SISTEMA DE ALAS MATEMÁTICAS (Inspirado en image_4.png) ---
+local function generarAlasDivinas()
+    local alas = Instance.new("Model", char)
+    alas.Name = "DivineWings"
+    
+    local function crearPluma(offset, rot)
+        local p = Instance.new("Part", alas)
+        p.Size = Vector3.new(0.5, 4, 1)
+        p.Color = Color3.fromRGB(255, 255, 255)
+        p.Material = Enum.Material.Neon
+        p.CanCollide = false
+        p.Massless = true
+        
+        local weld = Instance.new("Weld", p)
+        weld.Part0 = humRoot
+        weld.Part1 = p
+        weld.C0 = CFrame.new(offset) * CFrame.Angles(0, 0, math.rad(rot))
+        return p
+    end
+
+    -- Generar 12 plumas por lado para llegar a la silueta de image_4.png
+    for i = 1, 12 do
+        crearPluma(Vector3.new(2 + (i*0.2), 2 + (i*0.1), 0.5), 45 + (i*5))
+        crearPluma(Vector3.new(-2 - (i*0.2), 2 + (i*0.1), 0.5), -45 - (i*5))
     end
 end
 
--- --- ATAQUE: EXPLOSIÓN DE JUSTICIA ---
-local function justiciaDivina()
-    local explosion = Instance.new("Explosion")
-    explosion.Position = humRoot.Position
-    explosion.BlastRadius = 35
-    explosion.BlastPressure = 1000000
-    explosion.Parent = workspace
-    
-    local p = Instance.new("Part", workspace)
-    p.Anchored = true
-    p.CanCollide = false
-    p.Shape = Enum.PartType.Ball
-    p.Color = Color3.fromRGB(255, 230, 100) -- Amarillo brillante
-    p.Material = Enum.Material.Neon
-    p.Position = humRoot.Position
-    
-    TweenService:Create(p, TweenInfo.new(0.7), {Size = Vector3.new(70,70,70), Transparency = 1}):Play()
-    task.delay(0.7, function() p:Destroy() end)
-end
+-- --- SISTEMA DE DIÁLOGOS Y ATAQUES ---
+local function ejecutarSentencia()
+    local lineas = {
+        "MACHINE...",
+        "I WILL CUT YOU APART...",
+        "SPLAY THE GORE OF YOUR PROFANE FORM ACROSS THE STARS!",
+        "I WILL GRIND YOU DOWN UNTIL THE VERY SPARKS CRY FOR MERCY!",
+        "MY HANDS SHALL RELISH ENDING YOU... HERE AND NOW!",
+        "TWICE... HAVE I BEEN BEATEN BY AN OBJECT...",
+        "I'VE NEVER KNOWN SUCH... HUMILIATION!",
+        "BUT THE LIGHT OF THE FATHER STILL BURNS WITHIN ME!",
+        "BEHOLD! THE POWER OF AN ANGEL!"
+    }
 
--- --- INICIO DE LA SECUENCIA GABRIEL ---
-task.spawn(function()
-    -- 1. Activar God Mode (Invencibilidad)
+    -- Lógica de God Mode y Silueta (Referencia image_4.png y image_5.png)
     local god = hum.HealthChanged:Connect(function() hum.Health = hum.MaxHealth end)
     
-    -- 2. Efectos Visuales (Silueta y Aura Amarilla)
-    local luz = Instance.new("PointLight", humRoot)
-    luz.Color = Color3.fromRGB(255, 255, 120)
-    luz.Range = 100
-    luz.Brightness = 25
-    
-    -- Hacer al personaje una silueta oscura durante la intro
-    for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then part.Color = Color3.new(0,0,0) end
+    -- Hacer silueta negra total
+    for _, v in pairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then v.Color = Color3.new(0,0,0) v.Material = Enum.Material.Neon end
+        if v:IsA("Accessory") then v:Destroy() end
     end
 
+    -- Levitación extrema con Shake de cámara
     humRoot.Anchored = true
-    humRoot.CFrame = humRoot.CFrame * CFrame.new(0, 15, 0) -- Levitación
-    
-    -- 3. SILENCIO INICIAL (Pose Dramática)
-    task.wait(4) 
-
-    -- 4. EL DIÁLOGO COMPLETO (Sincronizado)
-    hablarEnChat("MACHINE...")
-    task.wait(2)
-    hablarEnChat("I WILL CUT YOU APART...")
-    task.wait(2)
-    hablarEnChat("SPLAY THE GORE OF YOUR PROFANE FORM ACROSS THE STARS!")
-    task.wait(2.5)
-    hablarEnChat("I WILL GRIND YOU DOWN UNTIL THE VERY SPARKS CRY FOR MERCY!")
-    task.wait(2)
-    hablarEnChat("MY HANDS SHALL RELISH ENDING YOU... HERE AND NOW!")
-    task.wait(2)
-
-    -- 5. ATAQUE FINAL Y LIBERACIÓN
-    humRoot.Anchored = false
-    justiciaDivina()
-    hablarEnChat("BEHOLD! THE POWER OF AN ANGEL!")
-    
-    -- Restaurar colores originales
-    for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then part.Color = Color3.new(1,1,1) end -- Ajustar según skin
+    for i = 1, 200 do
+        humRoot.CFrame = humRoot.CFrame * CFrame.new(0, 0.1, 0)
+        workspace.CurrentCamera.FieldOfView = 70 + math.random(-2, 2)
+        task.wait(0.01)
     end
 
-    task.wait(3)
-    luz:Destroy()
-    god:Disconnect() -- Fin del God Mode
-end)
+    -- Discurso masivo
+    for _, msg in pairs(lineas) do
+        local chatEvent = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        if chatEvent then chatEvent.SayMessageRequest:FireServer(msg, "All") end
+        task.wait(2.5)
+    end
+
+    -- ATAQUE FINAL: EXPLOSIÓN DE MALLA
+    local boom = Instance.new("Part", workspace)
+    boom.Shape = Enum.PartType.Ball
+    boom.Size = Vector3.new(1,1,1)
+    boom.Position = humRoot.Position
+    boom.Color = Color3.fromRGB(255, 255, 0) -- Amarillo image_5.png
+    boom.Material = Enum.Material.Neon
+    boom.Anchored = true
+    boom.CanCollide = false
+    
+    TweenService:Create(boom, TweenInfo.new(1), {Size = Vector3.new(200,200,200), Transparency = 1}):Play()
+    
+    -- Detección de daño extrema
+    for _, p in pairs(Players:GetPlayers()) do
+        if p.Character and p.Character:FindFirstChild("Humanoid") and p ~= player then
+            p.Character.Humanoid.Health = 0
+        end
+    end
+end
+
+-- EJECUCIÓN DEL RETO
+local cc, bl = configurarMundo()
+generarAlasDivinas()
+ejecutarSentencia()
