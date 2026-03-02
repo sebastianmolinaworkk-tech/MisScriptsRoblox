@@ -1,94 +1,83 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-
-local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
 local humRoot = char:WaitForChild("HumanoidRootPart")
+local hum = char:WaitForChild("Humanoid")
 
--- 1. LIMPIAR SI YA EXISTE
-if char:FindFirstChild("SuperAuto") then char.SuperAuto:Destroy() end
-if player.PlayerGui:FindFirstChild("CarGui") then player.PlayerGui.CarGui:Destroy() end
-
--- 2. CREAR EL AUTO (VISIBLE PARA TODOS)
-local carModel = Instance.new("Model", char)
-carModel.Name = "SuperAuto"
-
-local body = Instance.new("Part", carModel)
-body.Size = Vector3.new(6, 2, 8)
-body.Color = Color3.fromRGB(255, 0, 0)
-body.Material = Enum.Material.Neon
-body.CanCollide = false
-body.Massless = true
-
-local weld = Instance.new("Weld", body)
-weld.Part0 = humRoot
-weld.Part1 = body
-weld.C0 = CFrame.new(0, -2, 0)
-
--- 3. INTERFAZ MÓVIL REFORZADA
-local gui = Instance.new("ScreenGui", player.PlayerGui)
-gui.Name = "CarGui"
-
-local function crearBtn(txt, pos, color)
-    local b = Instance.new("TextButton", gui)
-    b.Size = UDim2.new(0.2, 0, 0.15, 0)
-    b.Position = pos
-    b.Text = txt
-    b.BackgroundColor3 = color
-    b.TextColor3 = Color3.new(1,1,1)
-    b.Font = Enum.Font.BlackOpsOne
-    b.TextScaled = true
-    return b
+-- --- CONFIGURACIÓN DE CHAT ---
+local function hablarEnChat(texto)
+    local chatEvent = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+    if chatEvent then
+        chatEvent.SayMessageRequest:FireServer(texto, "All")
+    end
 end
 
-local btnAcc = crearBtn("GAS", UDim2.new(0.75, 0, 0.7, 0), Color3.new(0, 0.6, 0))
-local btnBrk = crearBtn("FRENO", UDim2.new(0.05, 0, 0.7, 0), Color3.new(0.6, 0, 0))
-local speedLabel = Instance.new("TextLabel", gui)
-speedLabel.Size = UDim2.new(0.2, 0, 0.1, 0)
-speedLabel.Position = UDim2.new(0.4, 0, 0.85, 0)
-speedLabel.Text = "0 KM/H"
-speedLabel.BackgroundTransparency = 1
-speedLabel.TextColor3 = Color3.new(1, 1, 1)
-
--- 4. CONTROL DE CONDUCCIÓN
-local velocidad = 0
-local acelerando = false
-local frenando = false
-
-btnAcc.MouseButton1Down:Connect(function() acelerando = true end)
-btnAcc.MouseButton1Up:Connect(function() acelerando = false end)
-btnBrk.MouseButton1Down:Connect(function() frenando = true end)
-btnBrk.MouseButton1Up:Connect(function() frenando = false end)
-
-RunService.RenderStepped:Connect(function()
-    if acelerando then
-        velocidad = math.min(velocidad + 1, 80) -- Max 80 para que no te eche el juego
-    elseif frenando then
-        velocidad = math.max(velocidad - 2, -30)
-    else
-        velocidad = velocidad * 0.95 -- Fricción natural
-    end
-
-    if math.abs(velocidad) > 0.1 then
-        humRoot.CFrame = humRoot.CFrame * CFrame.new(0, 0, -velocidad/10)
-    end
+-- --- ATAQUE: EXPLOSIÓN DE JUSTICIA ---
+local function justiciaDivina()
+    local explosion = Instance.new("Explosion")
+    explosion.Position = humRoot.Position
+    explosion.BlastRadius = 35
+    explosion.BlastPressure = 1000000
+    explosion.Parent = workspace
     
-    speedLabel.Text = math.floor(math.abs(velocidad)) .. " KM/H"
+    local p = Instance.new("Part", workspace)
+    p.Anchored = true
+    p.CanCollide = false
+    p.Shape = Enum.PartType.Ball
+    p.Color = Color3.fromRGB(255, 230, 100) -- Amarillo brillante
+    p.Material = Enum.Material.Neon
+    p.Position = humRoot.Position
+    
+    TweenService:Create(p, TweenInfo.new(0.7), {Size = Vector3.new(70,70,70), Transparency = 1}):Play()
+    task.delay(0.7, function() p:Destroy() end)
+end
 
-    -- SISTEMA DE CHOQUE (TODOS LO VEN)
-    if math.abs(velocidad) > 20 then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local d = (humRoot.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                if d < 7 then
-                    local v = Instance.new("BodyVelocity", p.Character.HumanoidRootPart)
-                    v.Velocity = (p.Character.HumanoidRootPart.Position - humRoot.Position).Unit * 50 + Vector3.new(0, 30, 0)
-                    v.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-                    task.wait(0.1)
-                    v:Destroy()
-                end
-            end
-        end
+-- --- INICIO DE LA SECUENCIA GABRIEL ---
+task.spawn(function()
+    -- 1. Activar God Mode (Invencibilidad)
+    local god = hum.HealthChanged:Connect(function() hum.Health = hum.MaxHealth end)
+    
+    -- 2. Efectos Visuales (Silueta y Aura Amarilla)
+    local luz = Instance.new("PointLight", humRoot)
+    luz.Color = Color3.fromRGB(255, 255, 120)
+    luz.Range = 100
+    luz.Brightness = 25
+    
+    -- Hacer al personaje una silueta oscura durante la intro
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then part.Color = Color3.new(0,0,0) end
     end
+
+    humRoot.Anchored = true
+    humRoot.CFrame = humRoot.CFrame * CFrame.new(0, 15, 0) -- Levitación
+    
+    -- 3. SILENCIO INICIAL (Pose Dramática)
+    task.wait(4) 
+
+    -- 4. EL DIÁLOGO COMPLETO (Sincronizado)
+    hablarEnChat("MACHINE...")
+    task.wait(2)
+    hablarEnChat("I WILL CUT YOU APART...")
+    task.wait(2)
+    hablarEnChat("SPLAY THE GORE OF YOUR PROFANE FORM ACROSS THE STARS!")
+    task.wait(2.5)
+    hablarEnChat("I WILL GRIND YOU DOWN UNTIL THE VERY SPARKS CRY FOR MERCY!")
+    task.wait(2)
+    hablarEnChat("MY HANDS SHALL RELISH ENDING YOU... HERE AND NOW!")
+    task.wait(2)
+
+    -- 5. ATAQUE FINAL Y LIBERACIÓN
+    humRoot.Anchored = false
+    justiciaDivina()
+    hablarEnChat("BEHOLD! THE POWER OF AN ANGEL!")
+    
+    -- Restaurar colores originales
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then part.Color = Color3.new(1,1,1) end -- Ajustar según skin
+    end
+
+    task.wait(3)
+    luz:Destroy()
+    god:Disconnect() -- Fin del God Mode
 end)
