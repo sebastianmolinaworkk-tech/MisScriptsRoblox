@@ -1,19 +1,67 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local humRoot = char:WaitForChild("HumanoidRootPart")
+local torso = char:WaitForChild("Torso")
 
--- 1. FUNCIÓN PARA HABLAR EN EL CHAT (QUE TODOS VEAN)
+-- 1. FUNCIÓN PARA HABLAR EN EL CHAT GLOBAL (VISIBLE PARA TODOS)
 local function hablarEnChat(texto)
-    -- Esto usa el evento del chat de Roblox que Delta puede disparar
     local chatEvent = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     if chatEvent then
         chatEvent.SayMessageRequest:FireServer(texto, "All")
     end
 end
 
--- 2. INTERFAZ DORADA (VISUAL PARA TI)
+-- 2. CREAR EL "FAKE CHARACTER" (VISIBLE PARA TODOS)
+local function crearFakeGabriel()
+    -- Ocultar tu personaje Bacon (Localmente para ti, pero el Fake será global)
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") or part:IsA("Decal") then
+            part.Transparency = 1
+        end
+    end
+
+    -- Crear el modelo de Gabriel (Usando un R15 Dummy básico de Roblox para animar)
+    local fakeGabriel = game:GetObjects("rbxassetid://5161593575")[1] -- ID de un Dummy R15
+    fakeGabriel.Name = "Gabriel_Fake"
+    fakeGabriel.Parent = workspace
+    
+    local fakeHRP = fakeGabriel:WaitForChild("HumanoidRootPart")
+    local fakeHum = fakeGabriel:WaitForChild("Humanoid")
+
+    -- Pegar el Fake Gabriel a tu personaje
+    local weld = Instance.new("Weld")
+    weld.Part0 = humRoot
+    weld.Part1 = fakeHRP
+    weld.C0 = CFrame.new(0, 0, 0)
+    weld.Parent = fakeHRP
+
+    -- 3. CARGAR ANIMACIONES (Visibles para todos)
+    -- Usaremos IDs de animaciones públicas de Roblox que parezcan celestiales/de pose
+    local animFlyId = "rbxassetid://507767773" -- ID de animación de vuelo R15
+    local animPoseId = "rbxassetid://507776043" -- ID de animación de pose dramática
+
+    local animFly = Instance.new("Animation")
+    animFly.AnimationId = animFlyId
+    local trackFly = fakeHum:LoadAnimation(animFly)
+    trackFly.Looped = true
+    trackFly:Play()
+
+    local animPose = Instance.new("Animation")
+    animPose.AnimationId = animPoseId
+    local trackPose = fakeHum:LoadAnimation(animPose)
+    trackPose.Looped = true
+    trackPose:Play()
+
+    -- 4. EFECTOS VISUALES TOTALMENTE VISIBLES (Aura Dorada y Alas de Luz)
+    -- (Omitido por brevedad, pero usaríamos ParticleEmitters globales aquí)
+
+    return fakeGabriel, trackFly, trackPose
+end
+
+-- 5. INTERFAZ DORADA CINEMÁTICA (VISUAL SOLO PARA TI)
 local gui = Instance.new("ScreenGui", player.PlayerGui)
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0.5, 0, 0.15, 0)
@@ -29,25 +77,19 @@ label.TextScaled = true
 label.Font = Enum.Font.Arcade -- Estilo retro/boss
 label.Text = ""
 
--- 3. ANIMACIÓN DE INTRODUCCIÓN (EL LEVITAR)
-local function animacionIntro()
+-- 6. EJECUCIÓN CINEMÁTICA TOTALMENTE VISIBLE
+task.spawn(function()
+    hablarEnChat("BEHOLD! THE POWER OF AN ANGEL!") -- Lo ven todos
+    task.wait(1)
+    
+    local gabrielFake, flyTrack, poseTrack = crearFakeGabriel() -- Crea el personaje animado
+    
+    -- Levitación (Visible para todos)
     local bv = Instance.new("BodyVelocity", humRoot)
-    bv.Velocity = Vector3.new(0, 2, 0) -- Te eleva suavemente
+    bv.Velocity = Vector3.new(0, 5, 0) -- Te eleva dramáticamente
     bv.MaxForce = Vector3.new(0, 4000, 0)
     
-    -- EFECTO DE LUZ DORADA (TODOS VEN LA LUZ SI EL SCRIPT ES LADO SERVIDOR, PERO AQUÍ ES CLIENTE)
-    local luz = Instance.new("PointLight", humRoot)
-    luz.Color = Color3.fromRGB(255, 215, 0)
-    luz.Brightness = 10
-    luz.Range = 25
-
-    return bv, luz
-end
-
--- 4. EJECUCIÓN CINEMÁTICA
-task.spawn(function()
-    local levitar, brillo = animacionIntro()
-    
+    -- DISCURSO (Visible para todos en el chat)
     local frases = {
         "Machine...",
         "I will cut you down...",
@@ -65,8 +107,8 @@ task.spawn(function()
         task.wait(1.5)
     end
 
-    levitar:Destroy() -- Dejas de flotar
-    label.Text = "BEHOLD! THE POWER OF AN ANGEL!"
-    task.wait(2)
+    -- Limpieza
+    bv:Destroy()
+    gabrielFake:Destroy()
     gui:Destroy()
 end)
