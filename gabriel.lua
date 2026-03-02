@@ -1,103 +1,99 @@
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local humRoot = char:WaitForChild("HumanoidRootPart")
+local hum = char:WaitForChild("Humanoid")
 
--- 1. FUNCIÓN DE CHAT REFORZADA
-local function hablarEnChat(texto)
-    local chatEvent = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-    if chatEvent then
-        chatEvent.SayMessageRequest:FireServer(texto, "All")
-    end
+-- 1. CREAR EL VEHÍCULO (VISIBLE PARA TODOS)
+local function crearAuto()
+    local carModel = Instance.new("Model", char)
+    carModel.Name = "SuperAuto"
+
+    -- Chasis (El cuerpo del auto)
+    local body = Instance.new("Part", carModel)
+    body.Size = Vector3.new(6, 2, 10)
+    body.Color = Color3.fromRGB(255, 0, 0) -- Rojo Ferrari
+    body.Material = Enum.Material.Neon
+    body.CanCollide = false
+    
+    local weld = Instance.new("Weld", body)
+    weld.Part0 = humRoot
+    weld.Part1 = body
+    weld.C0 = CFrame.new(0, -2, 0)
+
+    -- Volante con "Animación" (Gira con la dirección)
+    local volante = Instance.new("Part", carModel)
+    volante.Size = Vector3.new(1, 1, 0.2)
+    volante.Shape = Enum.PartType.Cylinder
+    volante.Color = Color3.new(0,0,0)
+    
+    local vWeld = Instance.new("Weld", volante)
+    vWeld.Part0 = body
+    vWeld.Part1 = volante
+    vWeld.C0 = CFrame.new(0, 1.5, -2) * CFrame.Angles(0, math.rad(90), 0)
+
+    return body, vWeld
 end
 
--- 2. LIMPIAR GUIS ANTIGUAS (Evita que se duplique el cuadro)
-if player.PlayerGui:FindFirstChild("GabrielGui") then
-    player.PlayerGui.GabrielGui:Destroy()
-end
+local carBody, steeringWeld = crearAuto()
 
--- 3. CREAR INTERFAZ DORADA
+-- 2. INTERFAZ DE CONDUCCIÓN (Móvil)
 local gui = Instance.new("ScreenGui", player.PlayerGui)
-gui.Name = "GabrielGui"
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0.5, 0, 0.15, 0)
-frame.Position = UDim2.new(0.25, 0, 0.75, 0)
-frame.BackgroundColor3 = Color3.new(0, 0, 0)
-frame.BackgroundTransparency = 0.5
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(1, 0, 1, 0)
+main.BackgroundTransparency = 1
 
-local label = Instance.new("TextLabel", frame)
-label.Size = UDim2.new(1, 0, 1, 0)
-label.BackgroundTransparency = 1
-label.TextColor3 = Color3.fromRGB(255, 215, 0) -- DORADO
-label.TextScaled = true
-label.Font = Enum.Font.Arcade
-label.Text = ""
-
--- 4. EFECTO DE LLEGADA Y AURA AMARILLA
-local function efectoEntrada()
-    local luz = Instance.new("PointLight", humRoot)
-    luz.Color = Color3.fromRGB(255, 215, 0)
-    luz.Range = 40
-    luz.Brightness = 10
-    
-    local bv = Instance.new("BodyVelocity", humRoot)
-    bv.Velocity = Vector3.new(0, 4, 0) -- Levitación suave
-    bv.MaxForce = Vector3.new(0, 4000, 0)
-    return bv, luz
+-- Botones
+local function crearBoton(nombre, pos, texto)
+    local btn = Instance.new("TextButton", main)
+    btn.Name = nombre
+    btn.Size = UDim2.new(0.2, 0, 0.2, 0)
+    btn.Position = pos
+    btn.Text = texto
+    btn.BackgroundColor3 = Color3.new(0,0,0)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.BackgroundTransparency = 0.5
+    return btn
 end
 
--- 5. EL MOTOR DE VOCES (REPRODUCE EL AUDIO DE GABRIEL)
-local function reproducirVoz(idAudio, duracion)
-    local sonido = Instance.new("Sound", humRoot)
-    sonido.SoundId = "rbxassetid://" .. idAudio
-    sonido.Volume = 5 -- Volumen muy alto para que sea imponente
-    sonido.MaxDistance = 150 -- Distancia a la que los demás pueden escucharlo
-    sonido.EmitterSize = 30
-    sonido:Play()
-    
-    -- Borra el sonido al terminar para evitar lag en tu móvil de 8GB
-    task.delay(duracion, function()
-        if sonido then sonido:Destroy() end
-    end)
-end
+local btnAcc = crearBoton("Acelerar", UDim2.new(0.7, 0, 0.7, 0), "GAS")
+local btnBrk = crearBoton("Frenar", UDim2.new(0.1, 0, 0.7, 0), "FRENO")
+local speedLabel = Instance.new("TextLabel", main)
+speedLabel.Size = UDim2.new(0.2, 0, 0.1, 0)
+speedLabel.Position = UDim2.new(0.4, 0, 0.8, 0)
+speedLabel.Text = "0 KM/H"
 
--- 6. LA SECUENCIA ÉPICA (SINCRONIZADA CON VOZ)
-task.spawn(function()
-    local levitar, brillo = efectoEntrada()
-    
-    -- Aquí están las frases, los IDs de audio y el tiempo que dura cada frase
-    -- (Nota: Usamos IDs genéricos épicos públicos de Roblox para evitar la censura de audios)
-    local secuencias = {
-        {texto = "Machine...", audioId = "9073335503", tiempo = 2},
-        {texto = "I will cut you down...", audioId = "9073336444", tiempo = 2},
-        {texto = "Break you apart...", audioId = "9073337351", tiempo = 2},
-        {texto = "Splay the gore of your profane form across the STARS!", audioId = "9073338520", tiempo = 4}
-    }
+-- 3. LÓGICA DE MOVIMIENTO Y CHOQUES (VISIBLE PARA TODOS)
+local velocidad = 0
+local girando = 0
 
-    for _, linea in ipairs(secuencias) do
-        -- 1. Iniciar la voz
-        reproducirVoz(linea.audioId, linea.tiempo)
+btnAcc.MouseButton1Down:Connect(function() velocidad = 100 end)
+btnAcc.MouseButton1Up:Connect(function() velocidad = 0 end)
+btnBrk.MouseButton1Down:Connect(function() velocidad = -50 end)
+btnBrk.MouseButton1Up:Connect(function() velocidad = 0 end)
+
+RunService.Heartbeat:Connect(function()
+    if velocidad ~= 0 then
+        humRoot.Velocity = humRoot.CFrame.LookVector * velocidad
+        speedLabel.Text = math.floor(humRoot.Velocity.Magnitude) .. " KM/H"
         
-        -- 2. Enviar mensaje al chat global
-        hablarEnChat(linea.texto)
-        
-        -- 3. Efecto máquina de escribir (sincronizado con la duración del audio)
-        for i = 1, #linea.texto do
-            label.Text = string.sub(linea.texto, 1, i)
-            task.wait((linea.tiempo - 0.2) / #linea.texto)
-        end
-        task.wait(0.5) -- Pausa dramática entre oraciones
+        -- Animación volante
+        steeringWeld.C1 = CFrame.Angles(0, 0, math.sin(tick()*5))
     end
-
-    -- Grito Final
-    reproducirVoz("131063630", 4) -- Sonido de impacto divino / explosión final
-    label.Text = "BEHOLD! THE POWER OF AN ANGEL!"
-    hablarEnChat("BEHOLD! THE POWER OF AN ANGEL!")
-    task.wait(3)
     
-    -- Limpiar los efectos cuando termine el discurso
-    levitar:Destroy()
-    brillo:Destroy()
-    gui:Destroy()
+    -- SISTEMA DE CHOQUE (Manda a volar a otros)
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (humRoot.Position - p.Character.HumanoidRootPart.Position).Magnitude
+            if dist < 8 and velocidad > 20 then
+                -- Fuerza de empuje
+                local push = Instance.new("BodyVelocity", p.Character.HumanoidRootPart)
+                push.Velocity = (p.Character.HumanoidRootPart.Position - humRoot.Position).Unit * 100 + Vector3.new(0, 50, 0)
+                push.MaxForce = Vector3.new(100000, 100000, 100000)
+                task.wait(0.2)
+                push:Destroy()
+            end
+        end
+    end
 end)
