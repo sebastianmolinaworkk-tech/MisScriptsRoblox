@@ -1,98 +1,93 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
 local player = Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local humRoot = char:WaitForChild("HumanoidRootPart")
-local hum = char:WaitForChild("Humanoid")
 
--- 1. CREAR EL VEHÍCULO (VISIBLE PARA TODOS)
-local function crearAuto()
-    local carModel = Instance.new("Model", char)
-    carModel.Name = "SuperAuto"
+-- 1. LIMPIAR SI YA EXISTE
+if char:FindFirstChild("SuperAuto") then char.SuperAuto:Destroy() end
+if player.PlayerGui:FindFirstChild("CarGui") then player.PlayerGui.CarGui:Destroy() end
 
-    -- Chasis (El cuerpo del auto)
-    local body = Instance.new("Part", carModel)
-    body.Size = Vector3.new(6, 2, 10)
-    body.Color = Color3.fromRGB(255, 0, 0) -- Rojo Ferrari
-    body.Material = Enum.Material.Neon
-    body.CanCollide = false
-    
-    local weld = Instance.new("Weld", body)
-    weld.Part0 = humRoot
-    weld.Part1 = body
-    weld.C0 = CFrame.new(0, -2, 0)
+-- 2. CREAR EL AUTO (VISIBLE PARA TODOS)
+local carModel = Instance.new("Model", char)
+carModel.Name = "SuperAuto"
 
-    -- Volante con "Animación" (Gira con la dirección)
-    local volante = Instance.new("Part", carModel)
-    volante.Size = Vector3.new(1, 1, 0.2)
-    volante.Shape = Enum.PartType.Cylinder
-    volante.Color = Color3.new(0,0,0)
-    
-    local vWeld = Instance.new("Weld", volante)
-    vWeld.Part0 = body
-    vWeld.Part1 = volante
-    vWeld.C0 = CFrame.new(0, 1.5, -2) * CFrame.Angles(0, math.rad(90), 0)
+local body = Instance.new("Part", carModel)
+body.Size = Vector3.new(6, 2, 8)
+body.Color = Color3.fromRGB(255, 0, 0)
+body.Material = Enum.Material.Neon
+body.CanCollide = false
+body.Massless = true
 
-    return body, vWeld
-end
+local weld = Instance.new("Weld", body)
+weld.Part0 = humRoot
+weld.Part1 = body
+weld.C0 = CFrame.new(0, -2, 0)
 
-local carBody, steeringWeld = crearAuto()
-
--- 2. INTERFAZ DE CONDUCCIÓN (Móvil)
+-- 3. INTERFAZ MÓVIL REFORZADA
 local gui = Instance.new("ScreenGui", player.PlayerGui)
-local main = Instance.new("Frame", gui)
-main.Size = UDim2.new(1, 0, 1, 0)
-main.BackgroundTransparency = 1
+gui.Name = "CarGui"
 
--- Botones
-local function crearBoton(nombre, pos, texto)
-    local btn = Instance.new("TextButton", main)
-    btn.Name = nombre
-    btn.Size = UDim2.new(0.2, 0, 0.2, 0)
-    btn.Position = pos
-    btn.Text = texto
-    btn.BackgroundColor3 = Color3.new(0,0,0)
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.BackgroundTransparency = 0.5
-    return btn
+local function crearBtn(txt, pos, color)
+    local b = Instance.new("TextButton", gui)
+    b.Size = UDim2.new(0.2, 0, 0.15, 0)
+    b.Position = pos
+    b.Text = txt
+    b.BackgroundColor3 = color
+    b.TextColor3 = Color3.new(1,1,1)
+    b.Font = Enum.Font.BlackOpsOne
+    b.TextScaled = true
+    return b
 end
 
-local btnAcc = crearBoton("Acelerar", UDim2.new(0.7, 0, 0.7, 0), "GAS")
-local btnBrk = crearBoton("Frenar", UDim2.new(0.1, 0, 0.7, 0), "FRENO")
-local speedLabel = Instance.new("TextLabel", main)
+local btnAcc = crearBtn("GAS", UDim2.new(0.75, 0, 0.7, 0), Color3.new(0, 0.6, 0))
+local btnBrk = crearBtn("FRENO", UDim2.new(0.05, 0, 0.7, 0), Color3.new(0.6, 0, 0))
+local speedLabel = Instance.new("TextLabel", gui)
 speedLabel.Size = UDim2.new(0.2, 0, 0.1, 0)
-speedLabel.Position = UDim2.new(0.4, 0, 0.8, 0)
+speedLabel.Position = UDim2.new(0.4, 0, 0.85, 0)
 speedLabel.Text = "0 KM/H"
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextColor3 = Color3.new(1, 1, 1)
 
--- 3. LÓGICA DE MOVIMIENTO Y CHOQUES (VISIBLE PARA TODOS)
+-- 4. CONTROL DE CONDUCCIÓN
 local velocidad = 0
-local girando = 0
+local acelerando = false
+local frenando = false
 
-btnAcc.MouseButton1Down:Connect(function() velocidad = 100 end)
-btnAcc.MouseButton1Up:Connect(function() velocidad = 0 end)
-btnBrk.MouseButton1Down:Connect(function() velocidad = -50 end)
-btnBrk.MouseButton1Up:Connect(function() velocidad = 0 end)
+btnAcc.MouseButton1Down:Connect(function() acelerando = true end)
+btnAcc.MouseButton1Up:Connect(function() acelerando = false end)
+btnBrk.MouseButton1Down:Connect(function() frenando = true end)
+btnBrk.MouseButton1Up:Connect(function() frenando = false end)
 
-RunService.Heartbeat:Connect(function()
-    if velocidad ~= 0 then
-        humRoot.Velocity = humRoot.CFrame.LookVector * velocidad
-        speedLabel.Text = math.floor(humRoot.Velocity.Magnitude) .. " KM/H"
-        
-        -- Animación volante
-        steeringWeld.C1 = CFrame.Angles(0, 0, math.sin(tick()*5))
+RunService.RenderStepped:Connect(function()
+    if acelerando then
+        velocidad = math.min(velocidad + 1, 80) -- Max 80 para que no te eche el juego
+    elseif frenando then
+        velocidad = math.max(velocidad - 2, -30)
+    else
+        velocidad = velocidad * 0.95 -- Fricción natural
+    end
+
+    if math.abs(velocidad) > 0.1 then
+        humRoot.CFrame = humRoot.CFrame * CFrame.new(0, 0, -velocidad/10)
     end
     
-    -- SISTEMA DE CHOQUE (Manda a volar a otros)
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = (humRoot.Position - p.Character.HumanoidRootPart.Position).Magnitude
-            if dist < 8 and velocidad > 20 then
-                -- Fuerza de empuje
-                local push = Instance.new("BodyVelocity", p.Character.HumanoidRootPart)
-                push.Velocity = (p.Character.HumanoidRootPart.Position - humRoot.Position).Unit * 100 + Vector3.new(0, 50, 0)
-                push.MaxForce = Vector3.new(100000, 100000, 100000)
-                task.wait(0.2)
-                push:Destroy()
+    speedLabel.Text = math.floor(math.abs(velocidad)) .. " KM/H"
+
+    -- SISTEMA DE CHOQUE (TODOS LO VEN)
+    if math.abs(velocidad) > 20 then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local d = (humRoot.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                if d < 7 then
+                    local v = Instance.new("BodyVelocity", p.Character.HumanoidRootPart)
+                    v.Velocity = (p.Character.HumanoidRootPart.Position - humRoot.Position).Unit * 50 + Vector3.new(0, 30, 0)
+                    v.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+                    task.wait(0.1)
+                    v:Destroy()
+                end
             end
         end
     end
